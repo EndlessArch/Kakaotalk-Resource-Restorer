@@ -5,9 +5,12 @@
 #include <vector>
 //#include <map>
 
-constexpr std::string_view target_directory = "/Users/mac/Downloads/com.kakao.talk";
+constexpr std::string_view target_directory = "/Users/mac/Downloads/com.kakao.talk/";
 constexpr std::string_view copy_destination_path = "/Users/mac/Downloads/com.kakao.talkc";
 constexpr unsigned target_directory_length = target_directory.length();
+
+// whether touch folders/files or not.
+constexpr bool TEST_FLAG = false;
 
 static unsigned file_counter = 0;
 constexpr unsigned file_reader_buf_size = 8;
@@ -27,12 +30,17 @@ void forDir(const std::filesystem::directory_entry & start_entry) noexcept {
         if(it.is_directory()) forDir(it);
         else {
             std::cout << "\'" << it.path() << "\' -> ";
-                if(it.path().has_extension()) {
+//                if(it.path().has_extension()) {
+//
+//                    std::cout << "TYPE: \'" << it.path().extension() << "\'" << std::endl;
+//
+//                } else
+                {
+                    if(!it.file_size()) {
+                        std::cout << "EMPTY, skipping..." << std::endl;
+                        continue;
+                    }
 
-                    std::cout << "TYPE: \'" << it.path().extension() << "\'" << std::endl;
-
-                } else {
-                    
                     std::ifstream is(it.path().c_str(), std::ios::in | std::ios::binary);
                     std::string file_ext = ".txt";
                     
@@ -90,7 +98,9 @@ void forDir(const std::filesystem::directory_entry & start_entry) noexcept {
                     }
 
                     std::cout << "\'" << final_destination << "\'...";
-                    std::filesystem::copy(it.path(), final_destination);
+                    if constexpr (!TEST_FLAG)
+                        std::filesystem::copy_file(it.path(), final_destination); // throws error
+//                        std::filesystem::copy(it.path(), final_destination);
                     std::cout << "done" << std::endl;
                 }
             }
@@ -104,18 +114,23 @@ void forDir(const std::filesystem::directory_entry & start_entry) noexcept {
 auto main(int argc, char * argv[]) -> int {
     std::ios_base::sync_with_stdio(false); std::cin.tie(NULL); std::cout.tie(NULL);
 
+    if constexpr(!TEST_FLAG)
     { // clean target directory first.
         std::filesystem::path target_directory(copy_destination_path);
-        if(std::filesystem::directory_entry(target_directory).exists())
+        if(std::filesystem::directory_entry(target_directory).exists()) {
+            std::cout << "Found destionation folder exists, deleting...";
             std::filesystem::remove_all(target_directory);
+            std::cout << "done" << std::endl;
+        }
         std::filesystem::create_directory(target_directory);
     }
     
-    auto it = std::filesystem::directory_iterator(target_directory);
+    auto it = std::filesystem::directory_entry(target_directory);
 
-    std::cout << it->path() << ": Starting..." << std::endl;
-
-    forDir(*it);
+    std::cout << it.path() << ": Starting..." << std::endl;
+    
+    for(std::filesystem::directory_entry i : std::filesystem::directory_iterator(it))
+        forDir(i);
 
     std::cout << file_counter << std::endl;
     std::cout << ": Finishing..." << std::endl;
